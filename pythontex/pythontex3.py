@@ -42,12 +42,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 # Imports
-#// Python 2
+# // Python 2
 #from __future__ import absolute_import
 #from __future__ import division
 #from __future__ import print_function
 #from __future__ import unicode_literals
-#\\ End Python 2
+# \\ End Python 2
 import sys
 import os
 import argparse
@@ -74,25 +74,24 @@ else:
     import pickle
 
 
-
-
 # Script parameters
 # Version
 __version__ = '0.18dev'
 
 
-
-
 class Pytxcode(object):
     def __init__(self, data, gobble):
         self.delims, self.code = data.split('#\n', 1)
-        self.family, self.session, self.restart, self.instance, self.command, self.context, self.args_run, self.args_prettyprint, self.input_file, self.line = self.delims.split('#')
+        self.family, self.session, self.restart, self.instance, self.command, self.context, self.args_run, self.args_prettyprint, self.input_file, self.line = self.delims.split(
+            '#')
         self.instance_int = int(self.instance)
         self.line_int = int(self.line)
         self.key_run = self.family + '#' + self.session + '#' + self.restart
         self.key_typeset = self.key_run + '#' + self.instance
-        self.hashable_delims_run = self.key_typeset + '#' + self.command + '#' + self.context + '#' + self.args_run
-        self.hashable_delims_typeset = self.key_typeset + '#' + self.command + '#' + self.context + '#' + self.args_run
+        self.hashable_delims_run = self.key_typeset + '#' + \
+            self.command + '#' + self.context + '#' + self.args_run
+        self.hashable_delims_typeset = self.key_typeset + '#' + \
+            self.command + '#' + self.context + '#' + self.args_run
         if len(self.command) > 1:
             self.is_inline = False
             # Environments start on the next line
@@ -102,7 +101,8 @@ class Pytxcode(object):
             self.is_inline = True
         self.is_extfile = True if self.session.startswith('EXT:') else False
         if self.is_extfile:
-            self.extfile = os.path.expanduser(os.path.normcase(self.session.replace('EXT:', '', 1)))
+            self.extfile = os.path.expanduser(
+                os.path.normcase(self.session.replace('EXT:', '', 1)))
             self.key_typeset = self.key_typeset.replace('EXT:', '')
         self.is_cc = True if self.family.startswith('CC:') else False
         self.is_pyg = True if self.family.startswith('PYG') else False
@@ -126,8 +126,6 @@ class Pytxcode(object):
         self.sub_template = None
 
 
-
-
 def process_argv(data, temp_data):
     '''
     Process command line options using the argparse module.
@@ -140,6 +138,8 @@ def process_argv(data, temp_data):
     parser = argparse.ArgumentParser()
     parser.add_argument('TEXNAME',
                         help='LaTeX file, with or without .tex extension')
+    parser.add_argument('--output-directory',
+                        help='Output folder')
     parser.add_argument('--version', action='version',
                         version='PythonTeX {0}'.format(data['version']))
     parser.add_argument('--encoding', default='UTF-8',
@@ -152,7 +152,8 @@ def process_argv(data, temp_data):
                            const='true', choices=('true', 'false'),
                            help='run ALL code; equivalent to package option')
     group_run.add_argument('--rerun', default='errors',
-                           choices=('never', 'modified', 'errors', 'warnings', 'always'),
+                           choices=('never', 'modified', 'errors',
+                                    'warnings', 'always'),
                            help='set conditions for rerunning code; equivalent to package option')
     parser.add_argument('--hashdependencies', nargs='?', default='false',
                         const='true', choices=('true', 'false'),
@@ -273,6 +274,27 @@ def process_argv(data, temp_data):
                 interpreter_dict['python'] = 'python3'
 
     if args.TEXNAME is not None:
+        if args.output_directory is not None:
+            _, raw_jobname = os.path.split(args.TEXNAME)
+            dir = os.path.expanduser(os.path.normcase(args.output_directory))
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+            if os.path.exists(os.path.join(dir, raw_jobname)):
+                print('* PythonTeX error')
+                print('    A tex file exists at the temporary location.')
+                print('    To avoid accidental loss, it will not be overwritten.')
+                return sys.exit(1)
+
+            if sys.platform.startswith('win32'):
+                os.popen('copy ' + args.TEXNAME + ' ' +
+                         os.path.join(dir, raw_jobname))
+            else:
+                os.popen('cp ' + args.TEXNAME + ' ' +
+                         os.path.join(dir, raw_jobname))
+            data['abs_temp_path'] = os.path.abspath(
+                os.path.join(dir, raw_jobname))
+            args.TEXNAME = os.path.join(dir, raw_jobname)
+
         # Determine if we a dealing with just a filename, or a name plus
         # path.  If there's a path, we need to make the document directory
         # the current working directory.
@@ -287,7 +309,8 @@ def process_argv(data, temp_data):
             raw_jobname = raw_jobname.rsplit('.', 1)[0]
             if not os.path.exists(raw_jobname + '.pytxcode'):
                 print('* PythonTeX error')
-                print('    Code file ' + raw_jobname + '.pytxcode does not exist.')
+                print('    Code file ' + raw_jobname +
+                      '.pytxcode does not exist.')
                 print('    Run LaTeX to create it.')
                 return sys.exit(1)
 
@@ -298,7 +321,8 @@ def process_argv(data, temp_data):
         # time we create a file that contains the jobname string.  The raw
         # version will only be used in reference to pre-existing files created
         # on the TeX side, such as the .pytxcode file.
-        jobname = raw_jobname.replace(' ', '-').replace('"', '').replace('*', '-')
+        jobname = raw_jobname.replace(
+            ' ', '-').replace('"', '').replace('*', '-')
         # Store the results in data
         data['raw_jobname'] = raw_jobname
         data['jobname'] = jobname
@@ -321,7 +345,8 @@ def process_argv(data, temp_data):
                 if os.path.isfile(raw_jobname + ext):
                     if os.path.isfile(jobname + ext):
                         print('* PythonTeX error')
-                        print('    Directory naming collision between the following files:')
+                        print(
+                            '    Directory naming collision between the following files:')
                         print('      ' + raw_jobname + ext)
                         print('      ' + jobname + ext)
                         return sys.exit(1)
@@ -333,14 +358,13 @@ def process_argv(data, temp_data):
                 for file in ls:
                     if file.startswith(jobname):
                         print('* PythonTeX warning')
-                        print('    Potential directory naming collision between the following names:')
+                        print(
+                            '    Potential directory naming collision between the following names:')
                         print('      ' + raw_jobname)
                         print('      ' + jobname + '*')
                         print('    Attempting to proceed.')
                         temp_data['warnings'] += 1
                         break
-
-
 
 
 def load_code_get_settings(data, temp_data):
@@ -369,7 +393,6 @@ def load_code_get_settings(data, temp_data):
         print('Run LaTeX to make sure the file is current')
         return sys.exit(1)
 
-
     # Prepare to process settings
     #
     # Create a dict for storing settings.
@@ -380,6 +403,7 @@ def load_code_get_settings(data, temp_data):
 
     # Create a dict of processing functions, and generic processing functions
     settings_func = dict()
+
     def set_kv_data(k, v):
         if v == 'true':
             settings[k] = True
@@ -388,6 +412,7 @@ def load_code_get_settings(data, temp_data):
         else:
             settings[k] = v
     # Need a function for when assignment is only needed if not default value
+
     def set_kv_temp_data_if_not_default(k, v):
         if v != 'default':
             if v == 'true':
@@ -396,6 +421,7 @@ def load_code_get_settings(data, temp_data):
                 temp_data[k] = False
             else:
                 temp_data[k] = v
+
     def set_kv_data_fvextfile(k, v):
         # Error checking on TeX side should be enough, but be careful anyway
         try:
@@ -413,8 +439,9 @@ def load_code_get_settings(data, temp_data):
             temp_data['warnings'] += 1
         else:
             settings[k] = v
+
     def set_kv_pygments(k, v):
-        family, lexer_opts, options = v.replace(' ','').split('|')
+        family, lexer_opts, options = v.replace(' ', '').split('|')
         lexer = None
         lex_dict = {}
         opt_dict = {}
@@ -520,11 +547,10 @@ def load_code_get_settings(data, temp_data):
     # Do this last, so that Pygments settings are available
     if pytxcode.startswith('=>PYTHONTEX#'):
         gobble = settings['gobble']
-        temp_data['pytxcode'] = [Pytxcode(c, gobble) for c in pytxcode.split('=>PYTHONTEX#')[1:]]
+        temp_data['pytxcode'] = [Pytxcode(c, gobble)
+                                 for c in pytxcode.split('=>PYTHONTEX#')[1:]]
     else:
         temp_data['pytxcode'] = []
-
-
 
 
 def set_upgrade_compatibility(data, old, temp_data):
@@ -585,7 +611,8 @@ def get_old_data(data, old_data, temp_data):
     '''
 
     # Create a string containing the name of the data file
-    pythontex_data_file = os.path.expanduser(os.path.normcase(os.path.join(data['settings']['outputdir'], 'pythontex_data.pkl')))
+    pythontex_data_file = os.path.expanduser(os.path.normcase(
+        os.path.join(data['settings']['outputdir'], 'pythontex_data.pkl')))
 
     # Load the old data if it exists (read as binary pickle)
     if os.path.isfile(pythontex_data_file):
@@ -629,8 +656,6 @@ def get_old_data(data, old_data, temp_data):
         data['utilspath'] = ''
 
 
-
-
 def modified_dependencies(key, data, old_data, temp_data):
     hashdependencies = temp_data['hashdependencies']
     if key not in old_data['dependencies']:
@@ -646,12 +671,14 @@ def modified_dependencies(key, data, old_data, temp_data):
             # initial ~ (tilde) standing for the home directory.
             dep_file = os.path.expanduser(os.path.normcase(dep))
             if not os.path.isabs(dep_file):
-                dep_file = os.path.expanduser(os.path.normcase(os.path.join(workingdir, dep_file)))
+                dep_file = os.path.expanduser(
+                    os.path.normcase(os.path.join(workingdir, dep_file)))
             if not os.path.isfile(dep_file):
                 print('* PythonTeX error')
                 print('    Cannot find dependency "' + dep + '"')
                 print('    It belongs to ' + key.replace('#', ':'))
-                print('    Relative paths to dependencies must be specified from the working directory.')
+                print(
+                    '    Relative paths to dependencies must be specified from the working directory.')
                 temp_data['errors'] += 1
                 # A removed dependency should trigger an error, but it
                 # shouldn't cause code to execute.  Running the code
@@ -674,6 +701,7 @@ def modified_dependencies(key, data, old_data, temp_data):
                 if mtime != old_dep_hash_dict[dep][0]:
                     return True
         return False
+
 
 def should_rerun(hash, old_hash, old_exit_status, key, rerun, data, old_data, temp_data):
     # #### Need to clean up arg passing here
@@ -703,8 +731,6 @@ def should_rerun(hash, old_hash, old_exit_status, key, rerun, data, old_data, te
             return False
     elif rerun == 'always':
         return True
-
-
 
 
 def hash_all(data, temp_data, old_data, engine_dict):
@@ -740,29 +766,36 @@ def hash_all(data, temp_data, old_data, engine_dict):
     typeset_hasher = defaultdict(sha1)
     for c in pytxcode:
         if c.is_code:
-            code_hasher[c.key_run].update(c.hashable_delims_run.encode(encoding))
+            code_hasher[c.key_run].update(
+                c.hashable_delims_run.encode(encoding))
             code_encoded = c.code.encode(encoding)
             code_hasher[c.key_run].update(code_encoded)
             if c.is_typeset:
-                typeset_hasher[c.key_typeset].update(c.hashable_delims_typeset.encode(encoding))
+                typeset_hasher[c.key_typeset].update(
+                    c.hashable_delims_typeset.encode(encoding))
                 typeset_hasher[c.key_typeset].update(code_encoded)
-                typeset_hasher[c.key_typeset].update(c.args_prettyprint.encode(encoding))
+                typeset_hasher[c.key_typeset].update(
+                    c.args_prettyprint.encode(encoding))
         elif c.is_cons:
-            cons_hasher[c.key_run].update(c.hashable_delims_run.encode(encoding))
+            cons_hasher[c.key_run].update(
+                c.hashable_delims_run.encode(encoding))
             code_encoded = c.code.encode(encoding)
             cons_hasher[c.key_run].update(code_encoded)
             if c.is_typeset:
-                typeset_hasher[c.key_typeset].update(c.hashable_delims_typeset.encode(encoding))
+                typeset_hasher[c.key_typeset].update(
+                    c.hashable_delims_typeset.encode(encoding))
                 typeset_hasher[c.key_typeset].update(code_encoded)
-                typeset_hasher[c.key_typeset].update(c.args_prettyprint.encode(encoding))
+                typeset_hasher[c.key_typeset].update(
+                    c.args_prettyprint.encode(encoding))
         elif c.is_cc:
             cc_hasher[c.cc_type].update(c.hashable_delims_run.encode(encoding))
             cc_hasher[c.cc_type].update(c.code.encode(encoding))
         elif c.is_typeset:
-            typeset_hasher[c.key_typeset].update(c.hashable_delims_typeset.encode(encoding))
+            typeset_hasher[c.key_typeset].update(
+                c.hashable_delims_typeset.encode(encoding))
             typeset_hasher[c.key_typeset].update(c.code.encode(encoding))
-            typeset_hasher[c.key_typeset].update(c.args_prettyprint.encode(encoding))
-
+            typeset_hasher[c.key_typeset].update(
+                c.args_prettyprint.encode(encoding))
 
     # Store hashes
     code_hash_dict = {}
@@ -785,7 +818,6 @@ def hash_all(data, temp_data, old_data, engine_dict):
     for key in typeset_hasher:
         typeset_hash_dict[key] = typeset_hasher[key].hexdigest()
     data['typeset_hash_dict'] = typeset_hash_dict
-
 
     # See what needs to be updated.
     # In the process, copy over macros and files that may be reused.
@@ -923,7 +955,6 @@ def hash_all(data, temp_data, old_data, engine_dict):
     data['dependencies'] = dependencies
     data['exit_status'] = exit_status
 
-
     # Clean up for code that will be run again, and for code that no longer
     # exists.
     if loaded_old_data:
@@ -969,9 +1000,6 @@ def hash_all(data, temp_data, old_data, engine_dict):
                     f = os.path.expanduser(os.path.normcase(f))
                     if os.path.isfile(f):
                         os.remove(f)
-
-
-
 
 
 def parse_code_write_scripts(data, temp_data, engine_dict):
@@ -1042,12 +1070,11 @@ def parse_code_write_scripts(data, temp_data, engine_dict):
                 else:
                     temp_data['interactive_key'] = arg_key
 
-
-
     # We need to keep track of the last instance for each session, so
     # that duplicates can be eliminated.  Some LaTeX environments process
     # their content multiple times and thus will create duplicates.  We
     # need to initialize everything at -1, since instances begin at zero.
+
     def negative_one():
         return -1
     last_instance = defaultdict(negative_one)
@@ -1087,11 +1114,13 @@ def parse_code_write_scripts(data, temp_data, engine_dict):
     code_index_dict = {}
     for key in code_dict:
         family, session, restart = key.split('#')
-        fname = os.path.join(outputdir, family + '_' + session + '_' + restart + '.' + engine_dict[family].extension)
+        fname = os.path.join(outputdir, family + '_' + session +
+                             '_' + restart + '.' + engine_dict[family].extension)
         # Want to keep track of files without expanding user, but need to
         # expand user when actually writing files
         files[key].append(fname)
-        sessionfile = open(os.path.expanduser(os.path.normcase(fname)), 'w', encoding=encoding)
+        sessionfile = open(os.path.expanduser(
+            os.path.normcase(fname)), 'w', encoding=encoding)
         script, code_index = engine_dict[family].get_script(encoding,
                                                             utilspath,
                                                             outputdir,
@@ -1113,7 +1142,8 @@ def parse_code_write_scripts(data, temp_data, engine_dict):
         key = temp_data['debug_key']
         family, session, restart = key.split('#')
         basename = key.replace('#', '_')
-        syncdb_fname = os.path.join(outputdir, basename + '.' + engine_dict[family].extension + '.syncdb')
+        syncdb_fname = os.path.join(
+            outputdir, basename + '.' + engine_dict[family].extension + '.syncdb')
         files[key].append(syncdb_fname)
         # #### In future version, try to use currfile to get this information
         # automatically via the .pytxcode
@@ -1125,7 +1155,8 @@ def parse_code_write_scripts(data, temp_data, engine_dict):
         if not main_doc_fname:
             return sys.exit('Could not determine extension for main file "{0}"'.format(data['raw_jobname']))
         main_code_fname = basename + '.' + engine_dict[family].extension
-        f = open(os.path.expanduser(os.path.normcase(syncdb_fname)), 'w', encoding='utf8')
+        f = open(os.path.expanduser(os.path.normcase(
+            syncdb_fname)), 'w', encoding='utf8')
         f.write('{0},,{1},,\n'.format(main_code_fname, main_doc_fname))
         # All paths are relative to the main code file.  So if there is ever
         # an option for creating other code files, in other locations, then
@@ -1137,13 +1168,13 @@ def parse_code_write_scripts(data, temp_data, engine_dict):
             else:
                 input_file = e.input_file
             if ',' in input_file or ',' in main_code_fname:
-                line = '"{0}",{1},"{2}",{3},{4}\n'.format(main_code_fname, e.lines_total+1, input_file, e.line_int, e.lines_input)
+                line = '"{0}",{1},"{2}",{3},{4}\n'.format(
+                    main_code_fname, e.lines_total+1, input_file, e.line_int, e.lines_input)
             else:
-                line = '{0},{1},{2},{3},{4}\n'.format(main_code_fname, e.lines_total+1, input_file, e.line_int, e.lines_input)
+                line = '{0},{1},{2},{3},{4}\n'.format(
+                    main_code_fname, e.lines_total+1, input_file, e.line_int, e.lines_input)
             f.write(line)
         f.close()
-
-
 
 
 def do_multiprocessing(data, temp_data, old_data, engine_dict):
@@ -1190,10 +1221,12 @@ def do_multiprocessing(data, temp_data, old_data, engine_dict):
     if debug is not None or interactive is not None:
         import shlex
         if debug is not None:
-            print('Entering debug mode for "{0}"\n'.format(debug) + '-'*20 + '\n')
+            print('Entering debug mode for "{0}"\n'.format(
+                debug) + '-'*20 + '\n')
             key = temp_data['debug_key']
         else:
-            print('Entering interactive mode for "{0}"\n'.format(interactive) + '-'*20 + '\n')
+            print('Entering interactive mode for "{0}"\n'.format(
+                interactive) + '-'*20 + '\n')
             key = temp_data['interactive_key']
         basename = key.replace('#', '_')
         family, session, restart = key.split('#')
@@ -1205,7 +1238,8 @@ def do_multiprocessing(data, temp_data, old_data, engine_dict):
             # provide means for customization
             command = '{python} {debug} {file}.py --interactive'
             command = command.replace('{python}', interpreter_dict['python'])
-            command = command.replace('{debug}', '"{0}"'.format(os.path.join(sys.path[0], 'syncpdb.py')))
+            command = command.replace('{debug}', '"{0}"'.format(
+                os.path.join(sys.path[0], 'syncpdb.py')))
         else:
             command = engine_dict[family].command + ' --interactive'
         # Need to be in script directory so that pdb and any other tools that
@@ -1219,17 +1253,20 @@ def do_multiprocessing(data, temp_data, old_data, engine_dict):
         if os.path.isabs(os.path.expanduser(os.path.normcase(outputdir))):
             script_full = os.path.expanduser(os.path.join(outputdir, basename))
         else:
-            script_full = os.path.expanduser(os.path.join(orig_cwd, outputdir, basename))
+            script_full = os.path.expanduser(
+                os.path.join(orig_cwd, outputdir, basename))
         if platform.system() == 'Windows':
             script_full = script_full.replace('/', '\\')
         else:
             script_full = script_full.replace('\\', '/')
         # `shlex.split()` only works with Unicode after 2.7.2
         if (sys.version_info.major == 2 and sys.version_info.micro < 3):
-            exec_cmd = shlex.split(bytes(command.format(file=script.replace('\\', '\\\\'), File=script_full.replace('\\', '\\\\'))))
+            exec_cmd = shlex.split(bytes(command.format(file=script.replace(
+                '\\', '\\\\'), File=script_full.replace('\\', '\\\\'))))
             exec_cmd = [unicode(elem) for elem in exec_cmd]
         else:
-            exec_cmd = shlex.split(command.format(file=script.replace('\\', '\\\\'), File=script_full.replace('\\', '\\\\')))
+            exec_cmd = shlex.split(command.format(file=script.replace(
+                '\\', '\\\\'), File=script_full.replace('\\', '\\\\')))
         try:
             proc = subprocess.Popen(exec_cmd)
         except (WindowsError, FileNotFoundError) as e:
@@ -1241,7 +1278,8 @@ def do_multiprocessing(data, temp_data, old_data, engine_dict):
                 # exit codes.  Note that `subprocess.Popen()` works with strings
                 # under Windows; a list is not required.
                 exec_cmd_string = ' '.join(exec_cmd)
-                exec_cmd_string = 'cmd /C "@echo off & call {0} & if errorlevel 1 exit 1"'.format(exec_cmd_string)
+                exec_cmd_string = 'cmd /C "@echo off & call {0} & if errorlevel 1 exit 1"'.format(
+                    exec_cmd_string)
                 proc = subprocess.Popen(exec_cmd_string)
             else:
                 raise
@@ -1258,12 +1296,12 @@ def do_multiprocessing(data, temp_data, old_data, engine_dict):
             data['last_new_file_time'] = old_data['last_new_file_time']
         else:
             data['last_new_file_time'] = start_time
-        pythontex_data_file = os.path.expanduser(os.path.normcase(os.path.join(outputdir, 'pythontex_data.pkl')))
+        pythontex_data_file = os.path.expanduser(
+            os.path.normcase(os.path.join(outputdir, 'pythontex_data.pkl')))
         f = open(pythontex_data_file, 'wb')
         pickle.dump(data, f, -1)
         f.close()
         return
-
 
     # Create a pool for multiprocessing.  Set the maximum number of
     # concurrent processes to a user-specified value for jobs.  If the user
@@ -1445,7 +1483,6 @@ def do_multiprocessing(data, temp_data, old_data, engine_dict):
             print('    - ' + s)
         warnings += 1
 
-
     # Save all content (only needs to be done if code was indeed run).
     # Save a commented-out time corresponding to the last time PythonTeX ran
     # and created files, so that tools like latexmk can easily detect when
@@ -1457,15 +1494,19 @@ def do_multiprocessing(data, temp_data, old_data, engine_dict):
             last_new_file_time = old_data['last_new_file_time']
         data['last_new_file_time'] = last_new_file_time
 
-        macro_file = open(os.path.expanduser(os.path.normcase(os.path.join(outputdir, jobname + '.pytxmcr'))), 'w', encoding=encoding)
-        macro_file.write('%Last time of file creation:  ' + str(last_new_file_time) + '\n\n')
+        macro_file = open(os.path.expanduser(os.path.normcase(
+            os.path.join(outputdir, jobname + '.pytxmcr'))), 'w', encoding=encoding)
+        macro_file.write('%Last time of file creation:  ' +
+                         str(last_new_file_time) + '\n\n')
         for key in macros:
             macro_file.write(''.join(macros[key]))
         macro_file.close()
 
-        pygments_macro_file = open(os.path.expanduser(os.path.normcase(os.path.join(outputdir, jobname + '.pytxpyg'))), 'w', encoding=encoding)
+        pygments_macro_file = open(os.path.expanduser(os.path.normcase(
+            os.path.join(outputdir, jobname + '.pytxpyg'))), 'w', encoding=encoding)
         # Only save Pygments styles that are used
-        style_set = set([pygments_settings[k]['formatter_options']['style'] for k in pygments_settings if k != ':GLOBAL'])
+        style_set = set([pygments_settings[k]['formatter_options']['style']
+                         for k in pygments_settings if k != ':GLOBAL'])
         if style_set:
             from pygments.formatters import LatexFormatter
             formatter = LatexFormatter(style='default', commandprefix='PYG')
@@ -1478,7 +1519,8 @@ def do_multiprocessing(data, temp_data, old_data, engine_dict):
             pygments_macro_file.write(''.join(pygments_macros[key]))
         pygments_macro_file.close()
 
-        pythontex_data_file = os.path.expanduser(os.path.normcase(os.path.join(outputdir, 'pythontex_data.pkl')))
+        pythontex_data_file = os.path.expanduser(
+            os.path.normcase(os.path.join(outputdir, 'pythontex_data.pkl')))
         f = open(pythontex_data_file, 'wb')
         pickle.dump(data, f, -1)
         f.close()
@@ -1491,8 +1533,6 @@ def do_multiprocessing(data, temp_data, old_data, engine_dict):
     # This is needed because they are ints and thus immutable
     temp_data['errors'] = errors
     temp_data['warnings'] = warnings
-
-
 
 
 def run_code(encoding, outputdir, workingdir,
@@ -1526,12 +1566,15 @@ def run_code(encoding, outputdir, workingdir,
     # We need to let the user know we are switching code files
     # We check at the end to see if there were indeed any errors and warnings
     # and if not, clear messages.
-    messages.append('\n----  Messages for ' + key_run.replace('#', ':') + '  ----')
+    messages.append('\n----  Messages for ' +
+                    key_run.replace('#', ':') + '  ----')
 
     # Open files for stdout and stderr, run the code, then close the files
     basename = key_run.replace('#', '_')
-    out_file_name = os.path.expanduser(os.path.normcase(os.path.join(outputdir, basename + '.out')))
-    err_file_name = os.path.expanduser(os.path.normcase(os.path.join(outputdir, basename + '.err')))
+    out_file_name = os.path.expanduser(os.path.normcase(
+        os.path.join(outputdir, basename + '.out')))
+    err_file_name = os.path.expanduser(os.path.normcase(
+        os.path.join(outputdir, basename + '.err')))
     out_file = open(out_file_name, 'w', encoding=encoding)
     err_file = open(err_file_name, 'w', encoding=encoding)
     script = os.path.expanduser(os.path.join(outputdir, basename))
@@ -1542,7 +1585,8 @@ def run_code(encoding, outputdir, workingdir,
     if os.path.isabs(script):
         script_full = script
     else:
-        script_full = os.path.expanduser(os.path.join(os.getcwd(), outputdir, basename))
+        script_full = os.path.expanduser(
+            os.path.join(os.getcwd(), outputdir, basename))
         if platform.system() == 'Windows':
             script_full = script_full.replace('/', '\\')
         else:
@@ -1555,20 +1599,25 @@ def run_code(encoding, outputdir, workingdir,
         # Must double-escape any backslashes so that they survive `shlex.split()`
         # `shlex.split()` only works with Unicode after 2.7.2
         if (sys.version_info.major == 2 and sys.version_info.micro < 3):
-            exec_cmd = shlex.split(bytes(command.format(file=script.replace('\\', '\\\\'), File=script_full.replace('\\', '\\\\'), workingdir=workingdir.replace('\\', '\\\\'))))
+            exec_cmd = shlex.split(bytes(command.format(file=script.replace(
+                '\\', '\\\\'), File=script_full.replace('\\', '\\\\'), workingdir=workingdir.replace('\\', '\\\\'))))
             exec_cmd = [unicode(elem) for elem in exec_cmd]
         else:
             if family != 'juliacon':
-                exec_cmd = shlex.split(command.format(file=script.replace('\\', '\\\\'), File=script_full.replace('\\', '\\\\'), workingdir=workingdir.replace('\\', '\\\\')))
+                exec_cmd = shlex.split(command.format(file=script.replace('\\', '\\\\'), File=script_full.replace(
+                    '\\', '\\\\'), workingdir=workingdir.replace('\\', '\\\\')))
             else:
-                exec_cmd = shlex.split(command.format(file=script.replace('\\', '/'), File=script_full.replace('\\', '/'), workingdir=workingdir.replace('\\', '/')))
+                exec_cmd = shlex.split(command.format(file=script.replace(
+                    '\\', '/'), File=script_full.replace('\\', '/'), workingdir=workingdir.replace('\\', '/')))
         # Add any created files due to the command
         # This needs to be done before attempts to execute, to prevent orphans
         try:
             if family != 'Rcon':
-                proc = subprocess.Popen(exec_cmd, stdout=out_file, stderr=err_file)
+                proc = subprocess.Popen(
+                    exec_cmd, stdout=out_file, stderr=err_file)
             else:
-                proc = subprocess.Popen(exec_cmd, stdout=out_file, stderr=subprocess.STDOUT)
+                proc = subprocess.Popen(
+                    exec_cmd, stdout=out_file, stderr=subprocess.STDOUT)
         except WindowsError as e:
             if e.errno == 2:
                 # Batch files won't be found when called without extension. They
@@ -1578,11 +1627,14 @@ def run_code(encoding, outputdir, workingdir,
                 # exit codes.  Note that `subprocess.Popen()` works with strings
                 # under Windows; a list is not required.
                 exec_cmd_string = ' '.join(exec_cmd)
-                exec_cmd_string = 'cmd /C "@echo off & call {0} & if errorlevel 1 exit 1"'.format(exec_cmd_string)
+                exec_cmd_string = 'cmd /C "@echo off & call {0} & if errorlevel 1 exit 1"'.format(
+                    exec_cmd_string)
                 if family != 'Rcon':
-                    proc = subprocess.Popen(exec_cmd_string, stdout=out_file, stderr=err_file)
+                    proc = subprocess.Popen(
+                        exec_cmd_string, stdout=out_file, stderr=err_file)
                 else:
-                    proc = subprocess.Popen(exec_cmd_string, stdout=out_file, stderr=subprocess.STDOUT)
+                    proc = subprocess.Popen(
+                        exec_cmd_string, stdout=out_file, stderr=subprocess.STDOUT)
             else:
                 raise
 
@@ -1601,7 +1653,8 @@ def run_code(encoding, outputdir, workingdir,
     # removing and processing those.
     if not os.path.isfile(out_file_name):
         messages.append('* PythonTeX error')
-        messages.append('    Missing output file for ' + key_run.replace('#', ':'))
+        messages.append('    Missing output file for ' +
+                        key_run.replace('#', ':'))
         errors += 1
     elif family == 'juliacon' and proc.returncode == 1:
         messages.append('* PythonTeX error')
@@ -1617,12 +1670,14 @@ def run_code(encoding, outputdir, workingdir,
             for n, line in enumerate(tex_data_lines):
                 if line.rstrip() == '\\begin{juliaterm}':
                     c = next(code_iter)
-                    tex_data_lines[n] = '=>PYTHONTEX:STDOUT#{0}#code#\n'.format(c.instance)
+                    tex_data_lines[n] = '=>PYTHONTEX:STDOUT#{0}#code#\n'.format(
+                        c.instance)
                     if n != 0:
                         tex_data_lines[n-1] = ''
                 if line.rstrip() == '\\end{juliaterm}':
                     tex_data_lines[n] = ''
-            tex_data_lines.append('=>PYTHONTEX:DEPENDENCIES#\n=>PYTHONTEX:CREATED#\n')
+            tex_data_lines.append(
+                '=>PYTHONTEX:DEPENDENCIES#\n=>PYTHONTEX:CREATED#\n')
             with open(out_file_name, 'w', encoding=encoding) as f:
                 f.write(''.join(tex_data_lines))
         elif family == 'Rcon':
@@ -1642,10 +1697,12 @@ def run_code(encoding, outputdir, workingdir,
                         # console environment, this effectively amounts
                         # to adding an extra empty line (pressing ENTER)
                         # between the two.
-                        stdout_lines[n] = line.split('write("=>PYTHONTEX:', 1)[0]
+                        stdout_lines[n] = line.split(
+                            'write("=>PYTHONTEX:', 1)[0]
             while stdout_lines and (stdout_lines[-1].startswith('>') and not stdout_lines[-1][1:].strip(' \n')):
                 stdout_lines.pop()
-            stdout_lines.append('=>PYTHONTEX:DEPENDENCIES#\n=>PYTHONTEX:CREATED#\n')
+            stdout_lines.append(
+                '=>PYTHONTEX:DEPENDENCIES#\n=>PYTHONTEX:CREATED#\n')
             with open(out_file_name, 'w', encoding=encoding) as f:
                 f.write(''.join(stdout_lines))
 
@@ -1659,7 +1716,8 @@ def run_code(encoding, outputdir, workingdir,
         except:
             valid_stdout = False
             if proc.returncode == 0:
-                raise ValueError('Missing "created" and/or "dependencies" delims in stdout; invalid template?')
+                raise ValueError(
+                    'Missing "created" and/or "dependencies" delims in stdout; invalid template?')
 
         if valid_stdout:
             # Add created files to created list
@@ -1679,7 +1737,8 @@ def run_code(encoding, outputdir, workingdir,
             for dep in deps:
                 dep_file = os.path.expanduser(os.path.normcase(dep))
                 if not os.path.isabs(dep_file):
-                    dep_file = os.path.expanduser(os.path.normcase(os.path.join(workingdir, dep_file)))
+                    dep_file = os.path.expanduser(
+                        os.path.normcase(os.path.join(workingdir, dep_file)))
                 if not os.path.isfile(dep_file):
                     # If we can't find the file, we return a null hash and issue
                     # an error.  We don't need to change the exit status.  If the
@@ -1691,8 +1750,10 @@ def run_code(encoding, outputdir, workingdir,
                     dependencies[dep] = (None, None)
                     messages.append('* PythonTeX error')
                     messages.append('    Cannot find dependency "' + dep + '"')
-                    messages.append('    It belongs to ' + key_run.replace('#', ':'))
-                    messages.append('    Relative paths to dependencies must be specified from the working directory.')
+                    messages.append('    It belongs to ' +
+                                    key_run.replace('#', ':'))
+                    messages.append(
+                        '    Relative paths to dependencies must be specified from the working directory.')
                     errors += 1
                 elif hashdependencies:
                     # Read and hash the file in binary.  Opening in text mode
@@ -1701,7 +1762,8 @@ def run_code(encoding, outputdir, workingdir,
                     f = open(dep_file, 'rb')
                     hasher.update(f.read())
                     f.close()
-                    dependencies[dep] = (os.path.getmtime(dep_file), hasher.hexdigest())
+                    dependencies[dep] = (os.path.getmtime(
+                        dep_file), hasher.hexdigest())
                 else:
                     dependencies[dep] = (os.path.getmtime(dep_file), '')
 
@@ -1713,10 +1775,12 @@ def run_code(encoding, outputdir, workingdir,
                 lexer = dict()
                 for codetype in pygments_settings:
                     if codetype != ':GLOBAL':
-                        p = pygments_settings[codetype]['formatter_options'].copy()
+                        p = pygments_settings[codetype]['formatter_options'].copy(
+                        )
                         p['commandprefix'] = 'PYG'
                         formatter[codetype] = LatexFormatter(**p)
-                        lexer[codetype] = get_lexer_by_name(pygments_settings[codetype]['lexer'], **p)
+                        lexer[codetype] = get_lexer_by_name(
+                            pygments_settings[codetype]['lexer'], **p)
             for block in out.split('=>PYTHONTEX:STDOUT#')[1:]:
                 if block:
                     delims, content = block.split('#\n', 1)
@@ -1729,31 +1793,43 @@ def run_code(encoding, outputdir, workingdir,
                         if instance.endswith('CC'):
                             if family not in ('juliacon', 'Rcon'):
                                 messages.append('* PythonTeX warning')
-                                messages.append('    Custom code for "' + family + '" attempted to print or write to stdout')
-                                messages.append('    This is not supported; use a normal code command or environment')
-                                messages.append('    The following content was written:')
+                                messages.append(
+                                    '    Custom code for "' + family + '" attempted to print or write to stdout')
+                                messages.append(
+                                    '    This is not supported; use a normal code command or environment')
+                                messages.append(
+                                    '    The following content was written:')
                                 messages.append('')
-                                messages.extend(['    ' + l for l in content.splitlines()])
+                                messages.extend(
+                                    ['    ' + l for l in content.splitlines()])
                                 warnings += 1
                         elif command == 'i':
-                            content = r'\pytx@SVMCR{pytx@MCR@' + key_run.replace('#', '@') + '@' + instance + '}\n' + content.rstrip('\n') + '\\endpytx@SVMCR\n\n'
+                            content = r'\pytx@SVMCR{pytx@MCR@' + key_run.replace(
+                                '#', '@') + '@' + instance + '}\n' + content.rstrip('\n') + '\\endpytx@SVMCR\n\n'
                             macros.append(content)
                         else:
-                            fname = os.path.join(outputdir, basename + '_' + instance + '.stdout')
-                            f = open(os.path.expanduser(os.path.normcase(fname)), 'w', encoding=encoding)
+                            fname = os.path.join(
+                                outputdir, basename + '_' + instance + '.stdout')
+                            f = open(os.path.expanduser(
+                                os.path.normcase(fname)), 'w', encoding=encoding)
                             if command in ('s', 'sub'):
                                 if content:
-                                    fields = [x.split('\n', 1)[1].rsplit('\n', 1)[0] for x in content.split('=>PYTHONTEX:FIELD_DELIM#')[1:]]
-                                    content = code_list[int(instance)].sub_template.format(*fields)
+                                    fields = [x.split('\n', 1)[1].rsplit('\n', 1)[
+                                        0] for x in content.split('=>PYTHONTEX:FIELD_DELIM#')[1:]]
+                                    content = code_list[int(
+                                        instance)].sub_template.format(*fields)
                                 else:
                                     # If no replacement fields, de-templatize
-                                    content = code_list[int(instance)].sub_template.replace('{{', '{').replace('}}', '}')
+                                    content = code_list[int(instance)].sub_template.replace(
+                                        '{{', '{').replace('}}', '}')
                                 if command == 's':
                                     # Remove newline added by printing, prevent
                                     # LaTeX from adding a space after content
-                                    content = content.rsplit('\n', 1)[0] + '\\endinput\n'
+                                    content = content.rsplit(
+                                        '\n', 1)[0] + '\\endinput\n'
                             if family in ('juliacon', 'Rcon'):
-                                content = highlight(content, lexer[family], formatter[family])
+                                content = highlight(
+                                    content, lexer[family], formatter[family])
                             f.write(content)
                             f.close()
                             files.append(fname)
@@ -1761,7 +1837,8 @@ def run_code(encoding, outputdir, workingdir,
     # Process stderr
     if not os.path.isfile(err_file_name):
         messages.append('* PythonTeX error')
-        messages.append('    Missing stderr file for ' + key_run.replace('#', ':'))
+        messages.append('    Missing stderr file for ' +
+                        key_run.replace('#', ':'))
         errors += 1
     elif family in ('juliacon', 'Rcon'):
         pass
@@ -1819,7 +1896,8 @@ def run_code(encoding, outputdir, workingdir,
                         found = False
                         for pattern in linesig:
                             try:
-                                errlinenum = int(search(pattern, line).groups()[0])
+                                errlinenum = int(
+                                    search(pattern, line).groups()[0])
                                 found = True
                                 break
                             except:
@@ -1827,13 +1905,16 @@ def run_code(encoding, outputdir, workingdir,
                         if found:
                             while index_next[1].lines_total < errlinenum:
                                 try:
-                                    index_now, index_next = index_next, next(it)
+                                    index_now, index_next = index_next, next(
+                                        it)
                                 except:
                                     break
                             if errlinenum > index_now[1].lines_total + index_now[1].lines_input:
-                                doclinenum = str(index_now[1].line_int + index_now[1].lines_input)
+                                doclinenum = str(
+                                    index_now[1].line_int + index_now[1].lines_input)
                             else:
-                                doclinenum = str(index_now[1].line_int + errlinenum - index_now[1].lines_total - 1)
+                                doclinenum = str(
+                                    index_now[1].line_int + errlinenum - index_now[1].lines_total - 1)
                             input_file = index_now[1].input_file
                         else:
                             doclinenum = '??'
@@ -1896,10 +1977,13 @@ def run_code(encoding, outputdir, workingdir,
                             unknowns += 1
                             alert_type = 'unknown'
                         if input_file:
-                            err_messages_ud.append('* PythonTeX stderr - {0} on line {1} in "{2}":'.format(alert_type, doclinenum, input_file))
+                            err_messages_ud.append(
+                                '* PythonTeX stderr - {0} on line {1} in "{2}":'.format(alert_type, doclinenum, input_file))
                         else:
-                            err_messages_ud.append('* PythonTeX stderr - {0} on line {1}:'.format(alert_type, doclinenum))
-                    err_messages_ud.append('  ' + line.replace(outputdir_exp, '<outputdir>').rstrip('\n'))
+                            err_messages_ud.append(
+                                '* PythonTeX stderr - {0} on line {1}:'.format(alert_type, doclinenum))
+                    err_messages_ud.append(
+                        '  ' + line.replace(outputdir_exp, '<outputdir>').rstrip('\n'))
                 else:
                     err_messages_ud.append('  ' + line.rstrip('\n'))
 
@@ -1920,7 +2004,8 @@ def run_code(encoding, outputdir, workingdir,
                         found = False
                         for pattern in linesig:
                             try:
-                                errlinenum = int(search(pattern, line).groups()[0])
+                                errlinenum = int(
+                                    search(pattern, line).groups()[0])
                                 found = True
                                 break
                             except:
@@ -1936,7 +2021,8 @@ def run_code(encoding, outputdir, workingdir,
                                 index_next_last = index_next
                             while index_next[1].lines_total < errlinenum:
                                 try:
-                                    index_now, index_next = index_next, next(it)
+                                    index_now, index_next = index_next, next(
+                                        it)
                                 except:
                                     index_now = index_next
                                     break
@@ -1946,17 +2032,21 @@ def run_code(encoding, outputdir, workingdir,
                                 process = True
                                 if len(index_now[1].command) > 1:
                                     if errlinenum > index_now[1].lines_total + index_now[1].lines_input:
-                                        codelinenum = str(index_now[1].lines_user + index_now[1].lines_input + 1)
+                                        codelinenum = str(
+                                            index_now[1].lines_user + index_now[1].lines_input + 1)
                                     else:
-                                        codelinenum = str(index_now[1].lines_user + errlinenum - index_now[1].lines_total - index_now[1].inline_count)
+                                        codelinenum = str(
+                                            index_now[1].lines_user + errlinenum - index_now[1].lines_total - index_now[1].inline_count)
                                 else:
                                     codelinenum = '1'
                         else:
                             errlinenum = '??'
                             codelinenum = '??'
                             messages.append('* PythonTeX error')
-                            messages.append('    Line number ' + str(errlinenum) + ' could not be synced with the document')
-                            messages.append('    Content from stderr is not delimited, and cannot be resolved')
+                            messages.append(
+                                '    Line number ' + str(errlinenum) + ' could not be synced with the document')
+                            messages.append(
+                                '    Content from stderr is not delimited, and cannot be resolved')
                             errors += 1
                             process = False
 
@@ -1964,7 +2054,8 @@ def run_code(encoding, outputdir, workingdir,
                             if int(index_now[0]) > err_key_last_int:
                                 err_key = basename + '_' + index_now[0]
                                 err_key_last_int = int(index_now[0])
-                            line = line.replace(str(errlinenum), str(codelinenum), 1)
+                            line = line.replace(
+                                str(errlinenum), str(codelinenum), 1)
                             if fullbasename_correct in line:
                                 fullbasename = fullbasename_correct
                             else:
@@ -1974,9 +2065,11 @@ def run_code(encoding, outputdir, workingdir,
                             elif stderrfilename == 'session':
                                 line = line.replace(fullbasename, session)
                             elif stderrfilename == 'genericfile':
-                                line = line.replace(fullbasename + '.' + extension, '<file>')
+                                line = line.replace(
+                                    fullbasename + '.' + extension, '<file>')
                             elif stderrfilename == 'genericscript':
-                                line = line.replace(fullbasename + '.' + extension, '<script>')
+                                line = line.replace(
+                                    fullbasename + '.' + extension, '<script>')
                             if family in ('perlsix', 'psix'):
                                 # Perl 6 "SORRY!" errors during compiling
                                 # (before execution) need special processing,
@@ -1994,17 +2087,25 @@ def run_code(encoding, outputdir, workingdir,
                                         if errlinenum > index_now[1].lines_total + index_now[1].lines_input:
                                             p6_linenum_offset = index_now[1].lines_total
                                         else:
-                                            p6_linenum_offset = index_now[1].lines_total - index_now[1].lines_user + index_now[1].inline_count
-                                        p6_preceding_err_lines = [sub(r'line ([1-9][0-9]*)', lambda m: 'line {0}'.format(int(m.group(1)) - p6_linenum_offset), x) for x in err_ud[p6_sorry_index:n]]
+                                            p6_linenum_offset = index_now[1].lines_total - \
+                                                index_now[1].lines_user + \
+                                                index_now[1].inline_count
+                                        p6_preceding_err_lines = [sub(r'line ([1-9][0-9]*)', lambda m: 'line {0}'.format(
+                                            int(m.group(1)) - p6_linenum_offset), x) for x in err_ud[p6_sorry_index:n]]
                                         if stderrfilename == 'full':
-                                            p6_preceding_err_lines[0] = p6_preceding_err_lines[0].replace(fullbasename, basename)
+                                            p6_preceding_err_lines[0] = p6_preceding_err_lines[0].replace(
+                                                fullbasename, basename)
                                         elif stderrfilename == 'session':
-                                            p6_preceding_err_lines[0] = p6_preceding_err_lines[0].replace(fullbasename, session)
+                                            p6_preceding_err_lines[0] = p6_preceding_err_lines[0].replace(
+                                                fullbasename, session)
                                         elif stderrfilename == 'genericfile':
-                                            p6_preceding_err_lines[0] = p6_preceding_err_lines[0].replace(fullbasename + '.' + extension, '<file>')
+                                            p6_preceding_err_lines[0] = p6_preceding_err_lines[0].replace(
+                                                fullbasename + '.' + extension, '<file>')
                                         elif stderrfilename == 'genericscript':
-                                            p6_preceding_err_lines[0] = p6_preceding_err_lines[0].replace(fullbasename + '.' + extension, '<script>')
-                                        err_dict[err_key].extend(p6_preceding_err_lines)
+                                            p6_preceding_err_lines[0] = p6_preceding_err_lines[0].replace(
+                                                fullbasename + '.' + extension, '<script>')
+                                        err_dict[err_key].extend(
+                                            p6_preceding_err_lines)
                                         break
                             err_dict[err_key].append(line)
                     elif process:
@@ -2058,9 +2159,11 @@ def run_code(encoding, outputdir, workingdir,
                                 unknowns += 1
                                 alert_type = 'unknown'
                             if input_file:
-                                err_messages_d.append('* PythonTeX stderr - {0} near line {1} in "{2}":'.format(alert_type, doclinenum, input_file))
+                                err_messages_d.append(
+                                    '* PythonTeX stderr - {0} near line {1} in "{2}":'.format(alert_type, doclinenum, input_file))
                             else:
-                                err_messages_d.append('* PythonTeX stderr - {0} near line {1}:'.format(alert_type, doclinenum))
+                                err_messages_d.append(
+                                    '* PythonTeX stderr - {0} near line {1}:'.format(alert_type, doclinenum))
                         err_messages_d.extend(msg)
                     msg = []
                     found_basename = False
@@ -2084,7 +2187,8 @@ def run_code(encoding, outputdir, workingdir,
                         found = False
                         for pattern in linesig:
                             try:
-                                errlinenum = int(search(pattern, line).groups()[0])
+                                errlinenum = int(
+                                    search(pattern, line).groups()[0])
                                 found = True
                                 break
                             except:
@@ -2097,7 +2201,8 @@ def run_code(encoding, outputdir, workingdir,
                             if errlinenum > ei.lines_total + ei.lines_input:
                                 doclinenum = str(ei.line_int + ei.lines_input)
                             else:
-                                doclinenum = str(ei.line_int + errlinenum - ei.lines_total - 1)
+                                doclinenum = str(
+                                    ei.line_int + errlinenum - ei.lines_total - 1)
                             input_file = ei.input_file
                         else:
                             doclinenum = '??'
@@ -2161,13 +2266,17 @@ def run_code(encoding, outputdir, workingdir,
                             unknowns += 1
                             alert_type = 'unknown'
                         if input_file:
-                            msg.append('* PythonTeX stderr - {0} on line {1} in "{2}":'.format(alert_type, doclinenum, input_file))
+                            msg.append(
+                                '* PythonTeX stderr - {0} on line {1} in "{2}":'.format(alert_type, doclinenum, input_file))
                         else:
-                            msg.append('* PythonTeX stderr - {0} on line {1}:'.format(alert_type, doclinenum))
+                            msg.append(
+                                '* PythonTeX stderr - {0} on line {1}:'.format(alert_type, doclinenum))
                     # Clean up the stderr format a little, to keep it compact
-                    line = line.replace(outputdir_exp, '<outputdir>').rstrip('\n')
+                    line = line.replace(
+                        outputdir_exp, '<outputdir>').rstrip('\n')
                     if '/<outputdir>' in line or '\\<outputdir>' in line:
-                        line = sub(r'(?:(?:[A-Za-z]:\\)|(?:~?/)).*<outputdir>', '<outputdir>', line)
+                        line = sub(
+                            r'(?:(?:[A-Za-z]:\\)|(?:~?/)).*<outputdir>', '<outputdir>', line)
                     msg.append('  ' + line)
                 else:
                     msg.append('  ' + line.rstrip('\n'))
@@ -2206,9 +2315,11 @@ def run_code(encoding, outputdir, workingdir,
                         unknowns += 1
                         alert_type = 'unknown'
                     if input_file:
-                        err_messages_d.append('* PythonTeX stderr - {0} near line {1} in "{2}":'.format(alert_type, doclinenum, input_file))
+                        err_messages_d.append(
+                            '* PythonTeX stderr - {0} near line {1} in "{2}":'.format(alert_type, doclinenum, input_file))
                     else:
-                        err_messages_d.append('* PythonTeX stderr - {0} near line {1}:'.format(alert_type, doclinenum))
+                        err_messages_d.append(
+                            '* PythonTeX stderr - {0} near line {1}:'.format(alert_type, doclinenum))
                 err_messages_d.extend(msg)
 
             # Create .stderr
@@ -2226,7 +2337,8 @@ def run_code(encoding, outputdir, workingdir,
                         found = False
                         for pattern in linesig:
                             try:
-                                errlinenum = int(search(pattern, line).groups()[0])
+                                errlinenum = int(
+                                    search(pattern, line).groups()[0])
                                 found = True
                                 break
                             except:
@@ -2263,9 +2375,11 @@ def run_code(encoding, outputdir, workingdir,
                                     break
                             if len(command) > 1:
                                 if errlinenum > ei.lines_total + ei.lines_input:
-                                    codelinenum = str(ei.lines_user + ei.lines_input + 1)
+                                    codelinenum = str(
+                                        ei.lines_user + ei.lines_input + 1)
                                 else:
-                                    codelinenum = str(ei.lines_user + errlinenum - ei.lines_total - ei.inline_count)
+                                    codelinenum = str(
+                                        ei.lines_user + errlinenum - ei.lines_total - ei.inline_count)
                             else:
                                 codelinenum = '1'
                             # Reset `instance`, in case incremented
@@ -2274,9 +2388,11 @@ def run_code(encoding, outputdir, workingdir,
                             codelinenum = '??'
                             errlinenum = '??'
                             messages.append('* PythonTeX notice')
-                            messages.append('    Line number ' + str(errlinenum) + ' could not be synced with the document')
+                            messages.append(
+                                '    Line number ' + str(errlinenum) + ' could not be synced with the document')
 
-                        line = line.replace(str(errlinenum), str(codelinenum), 1)
+                        line = line.replace(
+                            str(errlinenum), str(codelinenum), 1)
                         if fullbasename_correct in line:
                             fullbasename = fullbasename_correct
                         else:
@@ -2286,16 +2402,19 @@ def run_code(encoding, outputdir, workingdir,
                         elif stderrfilename == 'session':
                             line = line.replace(fullbasename, session)
                         elif stderrfilename == 'genericfile':
-                            line = line.replace(fullbasename + '.' + extension, '<file>')
+                            line = line.replace(
+                                fullbasename + '.' + extension, '<file>')
                         elif stderrfilename == 'genericscript':
-                            line = line.replace(fullbasename + '.' + extension, '<script>')
+                            line = line.replace(
+                                fullbasename + '.' + extension, '<script>')
                         err_dict[err_key].append(line)
                     elif process:
                         err_dict[err_key].append(line)
         if err_dict:
             for err_key in err_dict:
                 stderr_file_name = os.path.join(outputdir, err_key + '.stderr')
-                f = open(os.path.expanduser(os.path.normcase(stderr_file_name)), 'w', encoding=encoding)
+                f = open(os.path.expanduser(os.path.normcase(
+                    stderr_file_name)), 'w', encoding=encoding)
                 f.write(''.join(err_dict[err_key]))
                 f.close()
                 files.append(stderr_file_name)
@@ -2303,12 +2422,14 @@ def run_code(encoding, outputdir, workingdir,
     # Clean up temp files, and update the list of existing files
     if keeptemps == 'none':
         for ext in [extension, 'pytxmcr', 'out', 'err']:
-            fname = os.path.expanduser(os.path.normcase(os.path.join(outputdir, basename + '.' + ext)))
+            fname = os.path.expanduser(os.path.normcase(
+                os.path.join(outputdir, basename + '.' + ext)))
             if os.path.isfile(fname):
                 os.remove(fname)
     elif keeptemps == 'code':
         for ext in ['pytxmcr', 'out', 'err']:
-            fname = os.path.expanduser(os.path.normcase(os.path.join(outputdir, basename + '.' + ext)))
+            fname = os.path.expanduser(os.path.normcase(
+                os.path.join(outputdir, basename + '.' + ext)))
             if os.path.isfile(fname):
                 os.remove(fname)
         files.append(os.path.join(outputdir, basename + '.' + extension))
@@ -2336,7 +2457,8 @@ def run_code(encoding, outputdir, workingdir,
                 * PythonTeX notice
                     {0} message(s) could not be classified
                     Interpreted as {1}, based on the return code(s)'''
-        messages[0] += textwrap.dedent(unknowns_message.format(unknowns, unknowns_type))
+        messages[0] += textwrap.dedent(
+            unknowns_message.format(unknowns, unknowns_type))
 
     # Take care of anything that has escaped detection thus far.
     if proc.returncode == 1 and not errors:
@@ -2347,7 +2469,8 @@ def run_code(encoding, outputdir, workingdir,
                     This may indicate a bad command or missing program.
                     The following command was executed:
                         "{0}"'''
-        messages[0] += textwrap.dedent(command_message.format(' '.join(exec_cmd)))
+        messages[0] += textwrap.dedent(
+            command_message.format(' '.join(exec_cmd)))
 
     # Add any stderr messages; otherwise, clear the default message header
     if err_messages_ud:
@@ -2366,8 +2489,6 @@ def run_code(encoding, outputdir, workingdir,
             'errors': errors,
             'warnings': warnings,
             'messages': messages}
-
-
 
 
 def do_pygments(encoding, outputdir, fvextfile, pygments_list,
@@ -2401,7 +2522,8 @@ def do_pygments(encoding, outputdir, fvextfile, pygments_list,
             if pygments_settings[codetype]['lexer'] == 'pycon':
                 p['python3'] = True
             formatter[codetype] = LatexFormatter(**p)
-            lexer[codetype] = get_lexer_by_name(pygments_settings[codetype]['lexer'], **p)
+            lexer[codetype] = get_lexer_by_name(
+                pygments_settings[codetype]['lexer'], **p)
 
     # Actually parse and highlight the code.
     for c in pygments_list:
@@ -2415,13 +2537,16 @@ def do_pygments(encoding, outputdir, fvextfile, pygments_list,
                 if hashdependencies:
                     hasher = sha1()
                     hasher.update(content.encode(encoding))
-                    dependencies[c.key_typeset] = {c.extfile: (os.path.getmtime(c.extfile), hasher.hexdigest())}
+                    dependencies[c.key_typeset] = {c.extfile: (
+                        os.path.getmtime(c.extfile), hasher.hexdigest())}
                 else:
-                    dependencies[c.key_typeset] = {c.extfile: (os.path.getmtime(c.extfile), '')}
+                    dependencies[c.key_typeset] = {
+                        c.extfile: (os.path.getmtime(c.extfile), '')}
             else:
                 content = None
                 messages.append('* PythonTeX error')
-                messages.append('    Could not find external file ' + c.extfile)
+                messages.append(
+                    '    Could not find external file ' + c.extfile)
                 messages.append('    The file was not pygmentized')
         else:
             content = c.code
@@ -2434,7 +2559,8 @@ def do_pygments(encoding, outputdir, fvextfile, pygments_list,
             else:
                 processed = sub(r'\\begin{Verbatim}\[(.+)\]',
                                 r'\\begin{{pytx@SaveVerbatim}}[\1]{{pytx@{0}@{1}@{2}@{3}}}'.format(c.family, c.session, c.restart, c.instance), processed, count=1)
-            processed = processed.rsplit('\\', 1)[0] + '\\end{pytx@SaveVerbatim}\n\n'
+            processed = processed.rsplit(
+                '\\', 1)[0] + '\\end{pytx@SaveVerbatim}\n\n'
             pygments_macros[c.key_typeset].append(processed)
         else:
             if c.args_prettyprint:
@@ -2443,9 +2569,12 @@ def do_pygments(encoding, outputdir, fvextfile, pygments_list,
             else:
                 processed = sub(r'\\begin{Verbatim}\[(.+)\]',
                                 r'\\begin{{pytx@Verbatim}}[\1]{{pytx@{0}@{1}@{2}@{3}}}'.format(c.family, c.session, c.restart, c.instance), processed, count=1)
-            processed = processed.rsplit('\\', 1)[0] + '\\end{pytx@Verbatim}\n\n'
-            fname = os.path.join(outputdir, c.key_typeset.replace('#', '_') + '.pygtex')
-            f = open(os.path.expanduser(os.path.normcase(fname)), 'w', encoding=encoding)
+            processed = processed.rsplit(
+                '\\', 1)[0] + '\\end{pytx@Verbatim}\n\n'
+            fname = os.path.join(
+                outputdir, c.key_typeset.replace('#', '_') + '.pygtex')
+            f = open(os.path.expanduser(os.path.normcase(fname)),
+                     'w', encoding=encoding)
             f.write(processed)
             f.close()
             pygments_files[c.key_typeset].append(fname)
@@ -2460,8 +2589,6 @@ def do_pygments(encoding, outputdir, fvextfile, pygments_list,
             'errors': errors,
             'warnings': warnings,
             'messages': messages}
-
-
 
 
 def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
@@ -2482,7 +2609,8 @@ def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
     errors = 0
     warnings = 0
     messages = []
-    messages.append('\n----  Messages for ' + key_run.replace('#', ':') + '  ----')
+    messages.append('\n----  Messages for ' +
+                    key_run.replace('#', ':') + '  ----')
 
     # Lazy import what's needed
     import code
@@ -2490,8 +2618,10 @@ def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
     if sys.version_info[0] == 2:
         # Need a Python 2 interface to io.StringIO that can accept bytes
         import io
+
         class StringIO(io.StringIO):
             _orig_write = io.StringIO.write
+
             def write(self, s):
                 self._orig_write(unicode(s))
     else:
@@ -2509,9 +2639,11 @@ def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
                 self.banner = 'NULL BANNER'
             elif banner == 'standard':
                 cprt = 'Type "help", "copyright", "credits" or "license" for more information.'
-                self.banner = 'Python {0} on {1}\n{2}'.format(sys.version, sys.platform, cprt)
+                self.banner = 'Python {0} on {1}\n{2}'.format(
+                    sys.version, sys.platform, cprt)
             elif banner == 'pyversion':
-                self.banner = 'Python ' + '.'.join(str(sys.version_info[n]) for n in (0, 1, 2))
+                self.banner = 'Python ' + \
+                    '.'.join(str(sys.version_info[n]) for n in (0, 1, 2))
             else:
                 self.banner = None
             if filename == 'console':
@@ -2543,12 +2675,14 @@ def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
 
                     del docdir
                     '''
-            cons_config = cons_config.format(workingdir=os.path.expanduser(os.path.normcase(workingdir)))[1:]
+            cons_config = cons_config.format(
+                workingdir=os.path.expanduser(os.path.normcase(workingdir)))[1:]
             self.console_code.extend(textwrap.dedent(cons_config).splitlines())
             # Code is processed and doesn't need newlines
             self.console_code.extend(startup.splitlines())
             for c in cons_list:
-                self.console_code.append('=>PYTHONTEX#{0}#{1}#\n'.format(c.instance, c.command))
+                self.console_code.append(
+                    '=>PYTHONTEX#{0}#{1}#\n'.format(c.instance, c.command))
                 self.console_code.extend(c.code.splitlines())
             # Reset sys.excepthook to its default, to prevent apport systems
             # in some Linux distributions from breaking exception handling
@@ -2651,7 +2785,8 @@ def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
                     else:
                         errors += 1
                         alert_type = 'error (?)'
-                    messages.append('* PythonTeX stderr - {0} in console startup code:'.format(alert_type))
+                    messages.append(
+                        '* PythonTeX stderr - {0} in console startup code:'.format(alert_type))
                     for line in console_content_lines:
                         messages.append('  ' + line)
             elif command in ('c', 'code'):
@@ -2674,10 +2809,13 @@ def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
                         errors += 1
                         alert_type = 'error (?)'
                     if instance.endswith('CC'):
-                        messages.append('* PythonTeX stderr - {0} near line {1} in custom code for console:'.format(alert_type, cons_index[instance]))
+                        messages.append(
+                            '* PythonTeX stderr - {0} near line {1} in custom code for console:'.format(alert_type, cons_index[instance]))
                     else:
-                        messages.append('* PythonTeX stderr - {0} near line {1} in console code:'.format(alert_type, cons_index[instance]))
-                    messages.append('    Console code is not typeset, and should have no output')
+                        messages.append(
+                            '* PythonTeX stderr - {0} near line {1} in console code:'.format(alert_type, cons_index[instance]))
+                    messages.append(
+                        '    Console code is not typeset, and should have no output')
                     for line in console_content_lines:
                         messages.append('  ' + line)
             else:
@@ -2706,17 +2844,23 @@ def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
                     #processed = highlight('\n'.join([textwrap.fill(x) for x in console_content.splitlines(True)]), lexer, formatter)
                     if console_content.count('\n') < fvextfile:
                         processed = sub(r'\\begin{Verbatim}\[(.+)\]',
-                                        r'\\begin{{pytx@SaveVerbatim}}[\1]{{pytx@{0}}}'.format(key_typeset.replace('#', '@')),
+                                        r'\\begin{{pytx@SaveVerbatim}}[\1]{{pytx@{0}}}'.format(
+                                            key_typeset.replace('#', '@')),
                                         processed, count=1)
-                        processed = processed.rsplit('\\', 1)[0] + '\\end{pytx@SaveVerbatim}\n\n'
+                        processed = processed.rsplit(
+                            '\\', 1)[0] + '\\end{pytx@SaveVerbatim}\n\n'
                         pygments_macros[key_typeset].append(processed)
                     else:
                         processed = sub(r'\\begin{Verbatim}\[(.+)\]',
-                                        r'\\begin{{pytx@Verbatim}}[\1]{{pytx@{0}}}'.format(key_typeset.replace('#', '@')),
+                                        r'\\begin{{pytx@Verbatim}}[\1]{{pytx@{0}}}'.format(
+                                            key_typeset.replace('#', '@')),
                                         processed, count=1)
-                        processed = processed.rsplit('\\', 1)[0] + '\\end{pytx@Verbatim}\n\n'
-                        fname = os.path.join(outputdir, key_typeset.replace('#', '_') + '.pygtex')
-                        f = open(os.path.expanduser(os.path.normcase(fname)), 'w', encoding=encoding)
+                        processed = processed.rsplit(
+                            '\\', 1)[0] + '\\end{pytx@Verbatim}\n\n'
+                        fname = os.path.join(
+                            outputdir, key_typeset.replace('#', '_') + '.pygtex')
+                        f = open(os.path.expanduser(
+                            os.path.normcase(fname)), 'w', encoding=encoding)
                         f.write(processed)
                         f.close()
                         pygments_files[key_typeset].append(fname)
@@ -2728,8 +2872,10 @@ def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
                     else:
                         processed = ('\\begin{pytx@Verbatim}\n' + console_content +
                                      '\\end{pytx@Verbatim}\n\n')
-                        fname = os.path.join(outputdir, key_typeset.replace('#', '_') + '.tex')
-                        f = open(os.path.expanduser(os.path.normcase(fname)), 'w', encoding=encoding)
+                        fname = os.path.join(
+                            outputdir, key_typeset.replace('#', '_') + '.tex')
+                        f = open(os.path.expanduser(
+                            os.path.normcase(fname)), 'w', encoding=encoding)
                         f.write(processed)
                         f.close()
                         files.append(fname)
@@ -2751,8 +2897,6 @@ def python_console(jobname, encoding, outputdir, workingdir, fvextfile,
             'messages': messages}
 
 
-
-
 def main(python=None):
     # Create dictionaries for storing data.
     #
@@ -2768,7 +2912,6 @@ def main(python=None):
     data = {'version': __version__, 'start_time': time.time()}
     temp_data = {'errors': 0, 'warnings': 0, 'python': python}
     old_data = dict()
-
 
     # Process command-line options.
     #
@@ -2794,9 +2937,10 @@ def main(python=None):
         sys.stdout = codecs.getwriter(data['encoding'])(sys.stdout, 'strict')
         sys.stderr = codecs.getwriter(data['encoding'])(sys.stderr, 'strict')
     else:
-        sys.stdout = codecs.getwriter(data['encoding'])(sys.stdout.buffer, 'strict')
-        sys.stderr = codecs.getwriter(data['encoding'])(sys.stderr.buffer, 'strict')
-
+        sys.stdout = codecs.getwriter(data['encoding'])(
+            sys.stdout.buffer, 'strict')
+        sys.stderr = codecs.getwriter(data['encoding'])(
+            sys.stderr.buffer, 'strict')
 
     # Load the code and process the settings it passes from the TeX side.
     #
@@ -2806,12 +2950,11 @@ def main(python=None):
     # Now that the settings are loaded, check if outputdir exits.
     # If not, create it.
     if not os.path.isdir(os.path.expanduser(os.path.normcase(data['settings']['outputdir']))):
-        os.mkdir(os.path.expanduser(os.path.normcase(data['settings']['outputdir'])))
-
+        os.mkdir(os.path.expanduser(
+            os.path.normcase(data['settings']['outputdir'])))
 
     # Load/create old_data
     get_old_data(data, old_data, temp_data)
-
 
     # Hash the code.  Determine what needs to be executed.  Determine whether
     # Pygments should be used.  Update pygments_settings to account for
@@ -2819,13 +2962,14 @@ def main(python=None):
     # and environments).
     hash_all(data, temp_data, old_data, engine_dict)
 
-
     # Parse the code and write scripts for execution.
     parse_code_write_scripts(data, temp_data, engine_dict)
 
-
     # Execute the code and perform Pygments highlighting via multiprocessing.
     do_multiprocessing(data, temp_data, old_data, engine_dict)
+
+    # if 'abs_temp_path' in data.keys():
+    #     os.remove(data['abs_temp_path'])
 
     # Skip exit message if in debug mode
     # #### May want to refactor
@@ -2851,10 +2995,13 @@ def main(python=None):
                 unresolved_warnings += data['exit_status'][key][1]
     if unresolved_warnings != 0 or unresolved_errors != 0:
         print('PythonTeX:  {0}'.format(data['raw_jobname']))
-        print('    - Old:      {0} error(s), {1} warnings(s)'.format(unresolved_errors, unresolved_warnings))
-        print('    - Current:  {0} error(s), {1} warnings(s)'.format(temp_data['errors'], temp_data['warnings']))
+        print('    - Old:      {0} error(s), {1} warnings(s)'.format(
+            unresolved_errors, unresolved_warnings))
+        print('    - Current:  {0} error(s), {1} warnings(s)'.format(
+            temp_data['errors'], temp_data['warnings']))
     else:
-        print('PythonTeX:  {0} - {1} error(s), {2} warning(s)\n'.format(data['raw_jobname'], temp_data['errors'], temp_data['warnings']))
+        print('PythonTeX:  {0} - {1} error(s), {2} warning(s)\n'.format(
+            data['raw_jobname'], temp_data['errors'], temp_data['warnings']))
 
     if 'upgrade_message' in temp_data:
         print(temp_data['upgrade_message'])
@@ -2866,17 +3013,16 @@ def main(python=None):
         sys.exit()
 
 
-
 # The "if" statement is needed for multiprocessing under Windows; see the
 # multiprocessing documentation.  It is also needed in this case when the
 # script is invoked via the wrapper.
 if __name__ == '__main__':
-    #// Python 2
-    #if sys.version_info.major != 2:
+    # // Python 2
+    # if sys.version_info.major != 2:
     #    sys.exit('This version of the PythonTeX script requires Python 2.')
-    #\\ End Python 2
-    #// Python 3
+    # \\ End Python 2
+    # // Python 3
     if sys.version_info.major != 3:
         sys.exit('This version of the PythonTeX script requires Python 3.')
-    #\\ End Python 3
+    # \\ End Python 3
     main(python=sys.version_info.major)

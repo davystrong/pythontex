@@ -27,6 +27,9 @@ formats.  See ``pythontex_gallery.html`` and the accompanying conversion
 script for an example of a PythonTeX document that was converted to HTML via
 ``depythontex`` and `Pandoc <http://johnmacfarlane.net/pandoc/>`_.
 
+This is a simple hacky solution to allow running PythonTex in a different folder
+using ``--output-directory``. It simply copies the tex file to the different folder...
+
 
 Example
 =======
